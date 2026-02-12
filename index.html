@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Stock Analyzer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body{
+  background:#0f172a;
+  color:white;
+  font-family:sans-serif;
+  padding:20px;
+}
+input,button{
+  width:100%;
+  padding:12px;
+  margin:10px 0;
+  border-radius:8px;
+  border:none;
+}
+button{
+  background:linear-gradient(90deg,#10b981,#3b82f6);
+  color:white;
+  font-weight:bold;
+}
+.card{
+  background:#1e293b;
+  padding:15px;
+  border-radius:10px;
+  margin-top:15px;
+}
+</style>
+</head>
+<body>
+
+<h2>株式簡易分析</h2>
+
+<input id="code" placeholder="銘柄コード 例: 7013">
+<button onclick="analyze()">分析実行</button>
+
+<div id="result"></div>
+
+<script>
+async function analyze(){
+  const code = document.getElementById("code").value;
+  const result = document.getElementById("result");
+
+  result.innerHTML = "取得中...";
+
+  try{
+    const res = await fetch("https://query1.finance.yahoo.com/v7/finance/quote?symbols="+code+".T");
+    const data = await res.json();
+    const price = data.quoteResponse.result[0].regularMarketPrice;
+    const change = data.quoteResponse.result[0].regularMarketChangePercent;
+
+    result.innerHTML = `
+      <div class="card">
+        <h3>現在価格: ¥${price}</h3>
+        <p>前日比: ${change.toFixed(2)}%</p>
+      </div>
+    `;
+  }catch(e){
+    result.innerHTML = "取得失敗";
+  }
+}
+</script>
+
+</body>
+</html>
