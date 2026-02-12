@@ -1,22 +1,26 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Stock Analyzer</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>株式分析アプリ</title>
+
 <style>
 body{
+  margin:0;
+  font-family:system-ui;
   background:#0f172a;
   color:white;
-  font-family:sans-serif;
   padding:20px;
 }
-input,button{
+h1{font-size:24px;margin-bottom:20px}
+input,select,button{
   width:100%;
   padding:12px;
-  margin:10px 0;
-  border-radius:8px;
+  margin-top:10px;
+  border-radius:10px;
   border:none;
+  font-size:16px;
 }
 button{
   background:linear-gradient(90deg,#10b981,#3b82f6);
@@ -25,43 +29,111 @@ button{
 }
 .card{
   background:#1e293b;
-  padding:15px;
-  border-radius:10px;
-  margin-top:15px;
+  padding:16px;
+  margin-top:20px;
+  border-radius:12px;
 }
+.green{color:#10b981}
+.red{color:#f43f5e}
+.yellow{color:#facc15}
+.small{color:#94a3b8;font-size:13px;margin-top:8px}
 </style>
 </head>
 <body>
 
-<h2>株式簡易分析</h2>
+<h1>株式分析（安定版）</h1>
 
-<input id="code" placeholder="銘柄コード 例: 7013">
-<button onclick="analyze()">分析実行</button>
+<input id="ticker" placeholder="例: 7013">
+<select id="period">
+  <option value="1mo">1ヶ月</option>
+  <option value="3mo">3ヶ月</option>
+  <option value="6mo">6ヶ月</option>
+  <option value="1y">1年</option>
+</select>
+
+<button onclick="run()">分析実行</button>
 
 <div id="result"></div>
 
 <script>
-async function analyze(){
-  const code = document.getElementById("code").value;
-  const result = document.getElementById("result");
+async function run(){
+  const ticker=document.getElementById("ticker").value.trim();
+  const period=document.getElementById("period").value;
 
-  result.innerHTML = "取得中...";
+  if(!/^\d{4}$/.test(ticker)){
+    alert("4桁銘柄コードを入力");
+    return;
+  }
+
+  const resultDiv=document.getElementById("result");
+  resultDiv.innerHTML="取得中...";
 
   try{
-    const res = await fetch("https://query1.finance.yahoo.com/v7/finance/quote?symbols="+code+".T");
-    const data = await res.json();
-    const price = data.quoteResponse.result[0].regularMarketPrice;
-    const change = data.quoteResponse.result[0].regularMarketChangePercent;
 
-    result.innerHTML = `
+    const yahooURL=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}.T?interval=1d&range=${period}`;
+
+    const proxyURL=`https://api.allorigins.win/raw?url=${encodeURIComponent(yahooURL)}`;
+
+    const res=await fetch(proxyURL);
+    if(!res.ok) throw new Error("API失敗");
+
+    const json=await res.json();
+    const data=json.chart.result[0];
+    const closes=data.indicators.quote[0].close.filter(v=>v);
+
+    const current=closes[closes.length-1];
+    const prev=closes[closes.length-2];
+
+    const change=((current-prev)/prev*100);
+
+    // --- トレンド分析 ---
+    const avg20=average(closes.slice(-20));
+    const avg60=average(closes.slice(-60));
+
+    let trendText="";
+    if(avg20>avg60) trendText="上昇トレンド";
+    else trendText="下降トレンド";
+
+    // --- モメンタム ---
+    let momentum="";
+    if(change>2) momentum="強い買い圧力";
+    else if(change<-2) momentum="強い売り圧力";
+    else momentum="方向感弱い";
+
+    // --- 総合判断 ---
+    let judge="";
+    let color="yellow";
+
+    if(avg20>avg60 && change>0){
+      judge="押し目監視";
+      color="green";
+    }else if(avg20<avg60 && change<0){
+      judge="下落トレンド継続注意";
+      color="red";
+    }else{
+      judge="様子見";
+      color="yellow";
+    }
+
+    resultDiv.innerHTML=`
       <div class="card">
-        <h3>現在価格: ¥${price}</h3>
+        <h2>現在価格: ¥${Math.round(current)}</h2>
         <p>前日比: ${change.toFixed(2)}%</p>
+        <hr>
+        <p>トレンド: ${trendText}</p>
+        <p>モメンタム: ${momentum}</p>
+        <h2 class="${color}">${judge}</h2>
+        <div class="small">※無料API経由のため取得失敗する日あり</div>
       </div>
     `;
+
   }catch(e){
-    result.innerHTML = "取得失敗";
+    resultDiv.innerHTML="<div class='card red'>取得失敗（時間おいて再試行）</div>";
   }
+}
+
+function average(arr){
+  return arr.reduce((a,b)=>a+b,0)/arr.length;
 }
 </script>
 
