@@ -1,141 +1,623 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>株式分析アプリ</title>
-
-<style>
-body{
-  margin:0;
-  font-family:system-ui;
-  background:#0f172a;
-  color:white;
-  padding:20px;
-}
-h1{font-size:24px;margin-bottom:20px}
-input,select,button{
-  width:100%;
-  padding:12px;
-  margin-top:10px;
-  border-radius:10px;
-  border:none;
-  font-size:16px;
-}
-button{
-  background:linear-gradient(90deg,#10b981,#3b82f6);
-  color:white;
-  font-weight:bold;
-}
-.card{
-  background:#1e293b;
-  padding:16px;
-  margin-top:20px;
-  border-radius:12px;
-}
-.green{color:#10b981}
-.red{color:#f43f5e}
-.yellow{color:#facc15}
-.small{color:#94a3b8;font-size:13px;margin-top:8px}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>健人専用 株分析（中期・長期・PF）</title>
+  <style>
+    :root{
+      --bg:#0b1220; --card:#111c33; --muted:#9fb0d0; --line:#1f2b45;
+      --good:#10b981; --bad:#f43f5e; --mid:#facc15; --info:#60a5fa;
+      --ink:#e6eefc;
+    }
+    *{box-sizing:border-box; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;}
+    body{margin:0; background:linear-gradient(180deg,#071024,#0b1220 40%,#0b1220); color:var(--ink); padding:16px;}
+    h1{margin:6px 0 6px; font-size:24px; font-weight:900; letter-spacing:.02em}
+    .sub{color:var(--muted); font-size:12px; margin:0 0 14px; line-height:1.45}
+    .wrap{max-width:760px; margin:0 auto}
+    .card{background:rgba(17,28,51,.92); border:1px solid rgba(255,255,255,.06); border-radius:16px; padding:14px; margin:12px 0}
+    .row{display:flex; gap:10px; flex-wrap:wrap}
+    .col{flex:1 1 220px}
+    label{display:block; font-size:12px; color:var(--muted); font-weight:800; letter-spacing:.06em; margin-bottom:6px}
+    input,select,button{
+      width:100%; padding:12px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.10);
+      background:rgba(6,10,18,.7); color:var(--ink); font-size:16px; outline:none;
+    }
+    input::placeholder{color:#6f82aa}
+    button{
+      border:none; cursor:pointer; font-weight:900; letter-spacing:.06em;
+      background:linear-gradient(90deg,var(--good),#3b82f6);
+      transition:transform .05s ease;
+    }
+    button:active{transform:scale(.99)}
+    .btn2{background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12)}
+    .btnDanger{background:rgba(244,63,94,.12); border:1px solid rgba(244,63,94,.35); color:#ffd0d8}
+    .pill{display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; font-size:12px; font-weight:900; border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.04)}
+    .good{color:var(--good)} .bad{color:var(--bad)} .mid{color:var(--mid)} .info{color:var(--info)}
+    .grid{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px}
+    @media (max-width:520px){ .grid{grid-template-columns:1fr} }
+    .kv{background:rgba(6,10,18,.55); border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:12px}
+    .k{font-size:11px; color:var(--muted); font-weight:800; letter-spacing:.08em; margin-bottom:4px}
+    .v{font-size:18px; font-weight:950}
+    .small{color:var(--muted); font-size:12px; line-height:1.45}
+    .hr{height:1px; background:rgba(255,255,255,.08); margin:12px 0}
+    .tabs{display:flex; gap:8px; overflow:auto; padding-bottom:2px}
+    .tab{padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.04); font-weight:900; font-size:12px; color:var(--muted)}
+    .tab.active{background:linear-gradient(90deg,rgba(16,185,129,.25),rgba(59,130,246,.25)); color:var(--ink); border-color:rgba(96,165,250,.35)}
+    table{width:100%; border-collapse:collapse; font-size:13px}
+    th,td{padding:10px 8px; border-bottom:1px solid rgba(255,255,255,.08); text-align:left; vertical-align:top}
+    th{color:var(--muted); font-weight:900; letter-spacing:.06em; font-size:11px}
+    .right{text-align:right}
+    .mono{font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+    .warn{background:rgba(250,204,21,.10); border:1px solid rgba(250,204,21,.25); color:#ffeaa0; padding:10px 12px; border-radius:12px}
+    .err{background:rgba(244,63,94,.10); border:1px solid rgba(244,63,94,.28); color:#ffd0d8; padding:10px 12px; border-radius:12px}
+  </style>
 </head>
+
 <body>
+<div class="wrap">
+  <h1>健人専用 株分析</h1>
+  <p class="sub">
+    中期（スイング）＋長期＋ポートフォリオ管理。<br>
+    YahooチャートAPIを<strong>プロキシ経由</strong>で取得（環境により遅延/失敗あり）。失敗してもPF登録はできる。
+  </p>
 
-<h1>株式分析（安定版）</h1>
+  <div class="card">
+    <div class="row">
+      <div class="col">
+        <label>銘柄コード（東証 4桁）</label>
+        <input id="ticker" inputmode="numeric" placeholder="例: 7013" value="7013" />
+      </div>
+      <div class="col">
+        <label>分析期間</label>
+        <select id="period">
+          <option value="1mo">1ヶ月</option>
+          <option value="3mo" selected>3ヶ月</option>
+          <option value="6mo">6ヶ月</option>
+          <option value="1y">1年</option>
+        </select>
+      </div>
+      <div class="col">
+        <label>目的タグ</label>
+        <select id="intentTag">
+          <option value="swing">中期（スイング）</option>
+          <option value="long">長期（5年〜）</option>
+        </select>
+      </div>
+    </div>
 
-<input id="ticker" placeholder="例: 7013">
-<select id="period">
-  <option value="1mo">1ヶ月</option>
-  <option value="3mo">3ヶ月</option>
-  <option value="6mo">6ヶ月</option>
-  <option value="1y">1年</option>
-</select>
+    <div class="row" style="margin-top:10px">
+      <div class="col"><button onclick="analyze()">分析実行</button></div>
+      <div class="col"><button class="btn2" onclick="addToPortfolio()">PFに追加/更新</button></div>
+      <div class="col"><button class="btn2" onclick="exportPortfolio()">PFをエクスポート</button></div>
+    </div>
 
-<button onclick="run()">分析実行</button>
+    <div class="row" style="margin-top:10px">
+      <div class="col">
+        <label>取得単価（円）</label>
+        <input id="avgPrice" inputmode="decimal" placeholder="例: 4000" />
+      </div>
+      <div class="col">
+        <label>保有株数（S株OK）</label>
+        <input id="shares" inputmode="decimal" placeholder="例: 1" />
+      </div>
+      <div class="col">
+        <label>PF内メモ</label>
+        <input id="memo" placeholder="例: 決算後押し目狙い" />
+      </div>
+    </div>
 
-<div id="result"></div>
+    <div id="msg" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card" id="resultCard" style="display:none">
+    <div class="tabs">
+      <button class="tab active" data-tab="overview" onclick="setTab('overview')">概要</button>
+      <button class="tab" data-tab="tech" onclick="setTab('tech')">テクニカル</button>
+      <button class="tab" data-tab="plan" onclick="setTab('plan')">判断（中期/長期）</button>
+      <button class="tab" data-tab="pf" onclick="setTab('pf')">PF</button>
+    </div>
+    <div class="hr"></div>
+    <div id="tab-overview"></div>
+    <div id="tab-tech" style="display:none"></div>
+    <div id="tab-plan" style="display:none"></div>
+    <div id="tab-pf" style="display:none"></div>
+  </div>
+
+  <div class="card">
+    <div class="warn">
+      <b>注意</b>：このツールは投資助言ではない。最終判断は自己責任。SBIと自動連携は不可なので、PFは手入力→端末内保存で管理。
+    </div>
+  </div>
+</div>
 
 <script>
-async function run(){
-  const ticker=document.getElementById("ticker").value.trim();
-  const period=document.getElementById("period").value;
+  // ======= 状態 =======
+  const state = {
+    last: null,
+    portfolio: loadPortfolio()
+  };
 
-  if(!/^\d{4}$/.test(ticker)){
-    alert("4桁銘柄コードを入力");
-    return;
+  function setMsg(type, text){
+    const el = document.getElementById("msg");
+    if(type === "error") el.innerHTML = `<div class="err">${escapeHtml(text)}</div>`;
+    else if(type === "warn") el.innerHTML = `<div class="warn">${escapeHtml(text)}</div>`;
+    else el.innerHTML = `<div class="small">${escapeHtml(text)}</div>`;
+  }
+  function escapeHtml(s){ return (s ?? "").toString().replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+  // ======= 取得（CORS回避プロキシ） =======
+  async function fetchYahooChart(ticker, period){
+    const target = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}.T?interval=1d&range=${period}`;
+
+    // ✅ Safariで「expected pattern」になりがちなURL形式を避ける（jinaは使わない）
+    const proxies = [
+      // 1) allorigins
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}`,
+      // 2) isomorphic-git CORS proxy（落ちる場合もあるがjinaよりSafari相性が良い）
+      `https://cors.isomorphic-git.org/${target}`
+    ];
+
+    let lastErr = null;
+
+    for (const url of proxies){
+      try{
+        const r = await fetch(url, { cache: "no-store" });
+        if(!r.ok) throw new Error(`HTTP ${r.status}`);
+        const json = await r.json();
+        if(json?.chart?.error) throw new Error(json.chart.error.description || "Yahoo error");
+        return json;
+      }catch(e){
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error("Load failed");
   }
 
-  const resultDiv=document.getElementById("result");
-  resultDiv.innerHTML="取得中...";
+  // ======= 指標 =======
+  function SMA(arr, n){
+    const out = new Array(arr.length).fill(null);
+    for(let i=n-1;i<arr.length;i++){
+      let sum=0;
+      for(let j=i-n+1;j<=i;j++) sum += arr[j];
+      out[i]=sum/n;
+    }
+    return out;
+  }
+  function RSI(arr, n=14){
+    const out = new Array(arr.length).fill(null);
+    if(arr.length < n+2) return out;
+    const gains=[], losses=[];
+    for(let i=1;i<arr.length;i++){
+      const ch = arr[i]-arr[i-1];
+      gains.push(Math.max(ch,0));
+      losses.push(Math.max(-ch,0));
+    }
+    for(let i=n-1;i<gains.length;i++){
+      let g=0,l=0;
+      for(let j=i-n+1;j<=i;j++){ g+=gains[j]; l+=losses[j]; }
+      const avgG=g/n, avgL=l/n;
+      const rs= avgG/(avgL || 1e-9);
+      out[i+1] = 100 - (100/(1+rs));
+    }
+    return out;
+  }
+  function stdev(vals){
+    const arr = vals.filter(v=>v!=null);
+    if(arr.length === 0) return null;
+    const mean = arr.reduce((a,b)=>a+b,0)/arr.length;
+    const v = arr.reduce((s,x)=>s+(x-mean)**2,0)/arr.length;
+    return Math.sqrt(v);
+  }
+  function pct(a,b){ return ((a-b)/b)*100; }
+  function bollinger(closes, n=20, k=2){
+    const mid = SMA(closes,n);
+    const up = new Array(closes.length).fill(null);
+    const dn = new Array(closes.length).fill(null);
+    for(let i=n-1;i<closes.length;i++){
+      const slice = closes.slice(i-n+1,i+1);
+      const sd = stdev(slice);
+      if(sd==null) continue;
+      up[i]=mid[i]+k*sd;
+      dn[i]=mid[i]-k*sd;
+    }
+    return {mid, up, dn};
+  }
+  function volatilityPct(closes, n=20){
+    if(closes.length < n+2) return null;
+    const rets=[];
+    for(let i=1;i<closes.length;i++){
+      rets.push(((closes[i]-closes[i-1])/closes[i-1])*100);
+    }
+    const tail=rets.slice(-n);
+    return stdev(tail);
+  }
 
-  try{
+  // ======= 分析 =======
+  function buildAnalysis(ticker, period, chart){
+    const r = chart.chart.result[0];
+    const meta = r.meta || {};
+    const q = r.indicators?.quote?.[0] || {};
+    const ts = r.timestamp || [];
 
-    const yahooURL=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}.T?interval=1d&range=${period}`;
+    const rows = ts.map((t,i)=>({
+      t,
+      close: q.close?.[i],
+      volume: q.volume?.[i]
+    })).filter(x=>x.close!=null);
 
-    const proxyURL=`https://api.allorigins.win/raw?url=${encodeURIComponent(yahooURL)}`;
+    if(rows.length < 60) throw new Error("データが少ない（期間を長くして）");
 
-    const res=await fetch(proxyURL);
-    if(!res.ok) throw new Error("API失敗");
+    const closes = rows.map(x=>x.close);
+    const vols = rows.map(x=>x.volume ?? null);
 
-    const json=await res.json();
-    const data=json.chart.result[0];
-    const closes=data.indicators.quote[0].close.filter(v=>v);
+    const sma20 = SMA(closes,20);
+    const sma50 = SMA(closes,50);
+    const rsi14 = RSI(closes,14);
+    const bb = bollinger(closes,20,2);
+    const vol20 = volatilityPct(closes,20);
 
-    const current=closes[closes.length-1];
-    const prev=closes[closes.length-2];
+    const lastIdx = closes.length-1;
+    const price = meta.regularMarketPrice ?? closes[lastIdx];
+    const prev = meta.chartPreviousClose ?? closes[lastIdx-1];
 
-    const change=((current-prev)/prev*100);
+    const hi60 = Math.max(...closes.slice(-60));
+    const dd60 = (hi60 - price)/hi60 * 100;
 
-    // --- トレンド分析 ---
-    const avg20=average(closes.slice(-20));
-    const avg60=average(closes.slice(-60));
+    const sma20v = sma20[lastIdx];
+    const sma50v = sma50[lastIdx];
+    const rsiV = rsi14[lastIdx];
+    const bbU = bb.up[lastIdx];
+    const bbM = bb.mid[lastIdx];
+    const bbD = bb.dn[lastIdx];
 
-    let trendText="";
-    if(avg20>avg60) trendText="上昇トレンド";
-    else trendText="下降トレンド";
+    const avg = (arr)=> {
+      const a = arr.filter(v=>v!=null);
+      if(!a.length) return null;
+      return a.reduce((x,y)=>x+y,0)/a.length;
+    };
+    const v5 = avg(vols.slice(-5));
+    const v20 = avg(vols.slice(-20));
+    const volRatio = (v5 && v20) ? (v5/v20) : null;
 
-    // --- モメンタム ---
-    let momentum="";
-    if(change>2) momentum="強い買い圧力";
-    else if(change<-2) momentum="強い売り圧力";
-    else momentum="方向感弱い";
-
-    // --- 総合判断 ---
-    let judge="";
-    let color="yellow";
-
-    if(avg20>avg60 && change>0){
-      judge="押し目監視";
-      color="green";
-    }else if(avg20<avg60 && change<0){
-      judge="下落トレンド継続注意";
-      color="red";
-    }else{
-      judge="様子見";
-      color="yellow";
+    let trend = "横ばい";
+    if(sma20v!=null && sma50v!=null){
+      if(sma20v > sma50v && price > sma20v) trend = "上昇（中期）";
+      else if(sma20v < sma50v && price < sma20v) trend = "下降（中期）";
+      else trend = "揉み合い";
     }
 
-    resultDiv.innerHTML=`
-      <div class="card">
-        <h2>現在価格: ¥${Math.round(current)}</h2>
-        <p>前日比: ${change.toFixed(2)}%</p>
-        <hr>
-        <p>トレンド: ${trendText}</p>
-        <p>モメンタム: ${momentum}</p>
-        <h2 class="${color}">${judge}</h2>
-        <div class="small">※無料API経由のため取得失敗する日あり</div>
+    const heat =
+      (rsiV!=null && rsiV>=70) ? "過熱（買われすぎ）" :
+      (rsiV!=null && rsiV<=30) ? "売られすぎ" :
+      "中立";
+
+    const bbPos = (bbU && bbD) ? ((price - bbD)/(bbU - bbD)) : null;
+    const bbLabel =
+      bbPos==null ? "不明" :
+      bbPos>0.85 ? "バンド上限付近（過熱寄り）" :
+      bbPos<0.15 ? "バンド下限付近（反発期待）" :
+      "バンド中央域";
+
+    const gap20 = (sma20v!=null) ? pct(price, sma20v) : null;
+
+    const swing = [];
+    if(trend.includes("上昇")){
+      swing.push("中期は上向き。基本は『押し目待ち』が優位。");
+      if(gap20!=null && gap20>5) swing.push("20日線から乖離大（+5%超）→ 追い買いは慎重。");
+      if(rsiV!=null && rsiV>70) swing.push("RSI高め→ いったん調整/ヨコヨコの可能性。");
+    }else if(trend.includes("下降")){
+      swing.push("中期は弱め。反転シグナル待ち。");
+      if(rsiV!=null && rsiV<35) swing.push("RSI低め→ 反発狙いは分割で。");
+    }else{
+      swing.push("揉み合い。レンジ or ブレイク待ち。");
+    }
+    if(volRatio!=null && volRatio>1.4) swing.push("出来高増（5日/20日が高い）→ 振れが大きくなりやすい。");
+    if(volRatio!=null && volRatio<0.8) swing.push("出来高細い→ ダマし注意。");
+
+    const long = [];
+    long.push("長期は『事業＋バリュエーション＋需給』が主。テクニカルは買い増しタイミング補助。");
+    if(dd60>10) long.push("60日高値から調整が進行中→ 追加は分割（急がない）。");
+    if(trend.includes("上昇")) long.push("トレンドは上向き→ 長期コアはホールド寄り。追加は20日線付近を優先。");
+    if(trend.includes("下降")) long.push("トレンド弱い→ 長期追加は底打ち確認後（価格>20日 or 20日>50日）が無難。");
+
+    return {
+      ticker, period,
+      price, prev,
+      changePct: ((price-prev)/prev*100),
+      trend, heat,
+      sma20: sma20v, sma50: sma50v, rsi: rsiV,
+      bbU, bbM, bbD, bbLabel,
+      gap20, dd60,
+      vol20, volRatio,
+      swing, long,
+      asof: new Date().toLocaleString("ja-JP")
+    };
+  }
+
+  function pillClassForChange(p){
+    if(p>=1) return "good";
+    if(p<=-1) return "bad";
+    return "mid";
+  }
+  function fmtYen(x, d=0){
+    if(x==null || !isFinite(x)) return "—";
+    return "¥" + Number(x).toFixed(d);
+  }
+  function fmtPct(x, d=2){
+    if(x==null || !isFinite(x)) return "—";
+    return (x>=0?"+":"") + Number(x).toFixed(d) + "%";
+  }
+
+  // ======= UI =======
+  function setTab(key){
+    for(const k of ["overview","tech","plan","pf"]){
+      document.getElementById("tab-"+k).style.display = (k===key) ? "block" : "none";
+    }
+    document.querySelectorAll(".tab").forEach(b=>{
+      b.classList.toggle("active", b.dataset.tab === key);
+    });
+  }
+
+  async function analyze(){
+    const raw = document.getElementById("ticker").value.trim();
+    const period = document.getElementById("period").value;
+    if(!/^\d{4}$/.test(raw)){
+      setMsg("error","銘柄コードは4桁数字（例: 7013）で入力して。");
+      return;
+    }
+    setMsg("info","取得中…（数秒かかることあり）");
+    try{
+      const chart = await fetchYahooChart(raw, period);
+      const a = buildAnalysis(raw, period, chart);
+      state.last = a;
+
+      // PFに同銘柄があるなら「現在値」も更新
+      if(state.portfolio[raw]){
+        state.portfolio[raw].lastPrice = a.price;
+        savePortfolio(state.portfolio);
+      }
+
+      renderAll();
+      setMsg("info",`更新OK（${a.asof}）`);
+    }catch(e){
+      // ここで例外メッセージをそのまま見せる
+      setMsg("error",`取得失敗: ${e?.message || e}`);
+      // 取得失敗してもPFタブは使えるようにする
+      if(!state.last){
+        state.last = { ticker: raw, period, price: null, prev: null, changePct: null, trend:"—", heat:"—",
+          sma20:null, sma50:null, rsi:null, bbU:null, bbM:null, bbD:null, bbLabel:"—", gap20:null, dd60:null, vol20:null, volRatio:null,
+          swing:["取得に失敗。ネットワーク/プロキシの影響。時間を置くか再実行。"], long:["取得に失敗。時間を置いて再実行。"], asof: new Date().toLocaleString("ja-JP")
+        };
+        renderAll();
+      }else{
+        renderAll();
+      }
+    }
+  }
+
+  function renderAll(){
+    const a = state.last;
+    document.getElementById("resultCard").style.display = "block";
+
+    const changeClass = pillClassForChange(a.changePct ?? 0);
+    document.getElementById("tab-overview").innerHTML = `
+      <div class="grid">
+        <div class="kv">
+          <div class="k">現在価格</div>
+          <div class="v mono">${fmtYen(a.price,0)}</div>
+          <div class="small">前日比 <span class="${changeClass} mono" style="font-weight:900">${fmtPct(a.changePct,2)}</span></div>
+        </div>
+        <div class="kv">
+          <div class="k">中期トレンド</div>
+          <div class="v">${escapeHtml(a.trend)}</div>
+          <div class="small">60日高値から <span class="mono">${a.dd60==null?"—":fmtPct(-a.dd60,2)}</span>（下落率 ${fmtPct(a.dd60,2)}）</div>
+        </div>
+        <div class="kv">
+          <div class="k">過熱度</div>
+          <div class="v">${escapeHtml(a.heat)}</div>
+          <div class="small">RSI14 <span class="mono">${a.rsi==null?"—":a.rsi.toFixed(1)}</span></div>
+        </div>
+        <div class="kv">
+          <div class="k">ボラ/出来高</div>
+          <div class="v">${a.vol20==null?"—":a.vol20.toFixed(2)}% <span class="small">（20日）</span></div>
+          <div class="small">出来高比（5日/20日） <span class="mono">${a.volRatio==null?"—":a.volRatio.toFixed(2)}x</span></div>
+        </div>
       </div>
     `;
 
-  }catch(e){
-    resultDiv.innerHTML="<div class='card red'>取得失敗（時間おいて再試行）</div>";
+    document.getElementById("tab-tech").innerHTML = `
+      <div class="grid">
+        <div class="kv">
+          <div class="k">SMA20 / SMA50</div>
+          <div class="v mono">${fmtYen(a.sma20,1)} / ${fmtYen(a.sma50,1)}</div>
+          <div class="small">価格の20日線乖離 <span class="mono">${a.gap20==null?"—":fmtPct(a.gap20,2)}</span></div>
+        </div>
+        <div class="kv">
+          <div class="k">ボリンジャーバンド（20,2σ）</div>
+          <div class="v mono">${fmtYen(a.bbD,0)} 〜 ${fmtYen(a.bbU,0)}</div>
+          <div class="small">${escapeHtml(a.bbLabel || "—")}</div>
+        </div>
+        <div class="kv">
+          <div class="k">RSI14</div>
+          <div class="v mono">${a.rsi==null?"—":a.rsi.toFixed(1)}</div>
+          <div class="small">目安：70↑過熱 / 30↓売られすぎ</div>
+        </div>
+        <div class="kv">
+          <div class="k">メモ</div>
+          <div class="small">
+            ・中期は「価格＞SMA20 & SMA20＞SMA50」だと上向き判定。<br>
+            ・出来高比が高い時は継続/転換の可能性↑（ただし振れも↑）。
+          </div>
+        </div>
+      </div>
+    `;
+
+    const tag = document.getElementById("intentTag").value;
+    const lines = (tag === "swing") ? (a.swing||[]) : (a.long||[]);
+    const title = (tag === "swing") ? "中期（スイング）判断" : "長期（コア）判断";
+    const bullets = lines.map(x=>`<li style="margin:8px 0">${escapeHtml(x)}</li>`).join("");
+    document.getElementById("tab-plan").innerHTML = `
+      <div class="card" style="margin:0; background:rgba(6,10,18,.40)">
+        <div class="pill info">${escapeHtml(title)}</div>
+        <ul style="margin:10px 0 0 18px; padding:0">${bullets}</ul>
+        <div class="hr"></div>
+        <div class="small">
+          目安（中期）：追加は「20日線付近」「RSI 40〜55」「出来高が落ち着く」などが揃うと◎。<br>
+          目安（長期）：分割で拾う。急騰局面の追い買いは避け、押し目/下落で淡々と。
+        </div>
+      </div>
+    `;
+
+    renderPortfolioTab(a);
   }
-}
 
-function average(arr){
-  return arr.reduce((a,b)=>a+b,0)/arr.length;
-}
+  function renderPortfolioTab(a){
+    const pf = state.portfolio;
+    const keys = Object.keys(pf);
+
+    // 表示銘柄で分析してるなら、最後の価格を優先更新
+    if(a && a.ticker && pf[a.ticker] && a.price!=null){
+      pf[a.ticker].lastPrice = a.price;
+      savePortfolio(pf);
+    }
+
+    let totalValue = 0;
+    const rows = keys.map(code=>{
+      const item = pf[code];
+      const lastPrice = item.lastPrice ?? null;
+      const value = (lastPrice!=null && item.shares!=null) ? (lastPrice*item.shares) : 0;
+      totalValue += value;
+      return { code, ...item, lastPrice, value };
+    });
+
+    rows.sort((x,y)=>y.value-x.value);
+    const top = rows[0];
+    const topShare = (top && totalValue>0) ? (top.value/totalValue*100) : null;
+
+    const table = rows.length ? `
+      <table>
+        <thead>
+          <tr>
+            <th>銘柄</th>
+            <th class="right">株数</th>
+            <th class="right">取得単価</th>
+            <th class="right">現在（最終取得）</th>
+            <th class="right">含み益率</th>
+            <th>タグ</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(r=>{
+            const pnl = (r.avgPrice!=null && r.lastPrice!=null) ? ((r.lastPrice-r.avgPrice)/r.avgPrice*100) : null;
+            const pnlClass = pnl==null ? "mid" : (pnl>=0 ? "good" : "bad");
+            return `
+              <tr>
+                <td><b class="mono">${r.code}</b><div class="small">${escapeHtml(r.memo||"")}</div></td>
+                <td class="right mono">${r.shares ?? "—"}</td>
+                <td class="right mono">${r.avgPrice==null?"—":fmtYen(r.avgPrice,0)}</td>
+                <td class="right mono">${r.lastPrice==null?"—":fmtYen(r.lastPrice,0)}</td>
+                <td class="right mono ${pnlClass}" style="font-weight:900">${pnl==null?"—":fmtPct(pnl,2)}</td>
+                <td>${r.tag==="swing"?"中期":"長期"}</td>
+                <td class="right"><button class="btnDanger" style="padding:8px 10px;border-radius:10px" onclick="removeFromPortfolio('${r.code}')">削除</button></td>
+              </tr>
+            `;
+          }).join("")}
+        </tbody>
+      </table>
+    ` : `<div class="small">まだPFが空。上で「取得単価・株数」を入れて「PFに追加/更新」して。</div>`;
+
+    const warn =
+      topShare!=null && topShare>45 ? `<div class="warn" style="margin-top:12px"><b>PF集中注意</b>：最大銘柄がPFの <b>${topShare.toFixed(1)}%</b>。中期/長期のバランスとリスク許容を確認。</div>` :
+      topShare!=null && topShare>30 ? `<div class="warn" style="margin-top:12px"><b>PF集中</b>：最大銘柄がPFの ${topShare.toFixed(1)}%。分散も検討。</div>` :
+      "";
+
+    document.getElementById("tab-pf").innerHTML = `
+      <div class="grid">
+        <div class="kv">
+          <div class="k">PF評価額（概算）</div>
+          <div class="v mono">${totalValue>0 ? ("¥"+Math.round(totalValue).toLocaleString("ja-JP")) : "—"}</div>
+          <div class="small">※ 現在値はこのアプリで取得できた銘柄だけ更新。未取得は前回値/空欄。</div>
+        </div>
+        <div class="kv">
+          <div class="k">最大銘柄比率</div>
+          <div class="v mono">${topShare==null ? "—" : topShare.toFixed(1)+"%"}</div>
+          <div class="small">中期/長期の配分が狙い通りかチェック。</div>
+        </div>
+      </div>
+      <div class="hr"></div>
+      ${table}
+      ${warn}
+    `;
+  }
+
+  // ======= PF操作 =======
+  function addToPortfolio(){
+    const code = document.getElementById("ticker").value.trim();
+    if(!/^\d{4}$/.test(code)){
+      setMsg("error","先に銘柄コードを4桁で入れて。");
+      return;
+    }
+    const avgPrice = parseFloat(document.getElementById("avgPrice").value);
+    const shares = parseFloat(document.getElementById("shares").value);
+    const tag = document.getElementById("intentTag").value;
+    const memo = document.getElementById("memo").value.trim();
+
+    if(!isFinite(avgPrice) || avgPrice<=0){
+      setMsg("error","取得単価（円）を正しく入れて。");
+      return;
+    }
+    if(!isFinite(shares) || shares<=0){
+      setMsg("error","株数を正しく入れて（S株OK）。");
+      return;
+    }
+
+    const lastPrice =
+      (state.last && state.last.ticker===code && state.last.price!=null) ? state.last.price :
+      (state.portfolio[code]?.lastPrice ?? null);
+
+    state.portfolio[code] = { avgPrice, shares, tag, memo, lastPrice };
+    savePortfolio(state.portfolio);
+    setMsg("info",`PFに保存した（${code}）`);
+    // 取得に失敗しててもPFは更新できる
+    if(state.last) renderAll();
+  }
+
+  function removeFromPortfolio(code){
+    delete state.portfolio[code];
+    savePortfolio(state.portfolio);
+    setMsg("info",`PFから削除（${code}）`);
+    if(state.last) renderAll();
+  }
+
+  function exportPortfolio(){
+    const json = JSON.stringify(state.portfolio, null, 2);
+    try{
+      navigator.clipboard.writeText(json);
+      setMsg("info","PFをクリップボードにコピーした。メモ帳に貼ればバックアップできる。");
+    }catch{
+      setMsg("warn","コピーできない環境。下の文字列を長押しでコピーして。");
+      alert(json);
+    }
+  }
+
+  function loadPortfolio(){
+    try{
+      const raw = localStorage.getItem("kento_pf_v2");
+      return raw ? JSON.parse(raw) : {};
+    }catch{
+      return {};
+    }
+  }
+  function savePortfolio(pf){
+    localStorage.setItem("kento_pf_v2", JSON.stringify(pf));
+  }
+
+  // 初期メッセージ
+  (function init(){
+    setMsg("info","準備OK。まずは銘柄を分析 → 取得単価/株数を入れてPF登録。取得が落ちてもPF登録はできる。");
+  })();
 </script>
-
 </body>
 </html>
